@@ -9,7 +9,7 @@
 #include "quad.h"
 #include "sphere.h"
 #include "texture.h"
-
+#include "ellipsoid.h"
 
 
 
@@ -89,11 +89,27 @@ void bouncing_spheres()
 
 void checkered_spheres() {
     hittable_list world;
+    auto earth_texture = make_shared<image_texture>("download-(6).png");
+    auto earth_surface = make_shared<lambertian>(earth_texture);
+    auto egg_material = make_shared<lambertian>(color(0.9, 0.8, 0.2));
+
+    world.add(make_shared<ellipsoid>(
+        point3(0, 1, 0),
+        1.0,   // x radius
+        1.4,   // y radius (taller)
+        1.0,   // z radius
+        earth_surface
+    ));
+    hittable_list lights;
+    auto empty_material = shared_ptr<material>();
+    lights.add(
+        make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), empty_material));
+    lights.add(make_shared<sphere>(point3(190, 90, 190), 90, empty_material));
 
     auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
 
-    world.add(make_shared<sphere>(point3(0, -10, 0), 10, make_shared<lambertian>(checker)));
-    world.add(make_shared<sphere>(point3(0, 10, 0), 10, make_shared<lambertian>(checker)));
+    //world.add(make_shared<sphere>(point3(0, -10, 0), 10, make_shared<lambertian>(checker)));
+    //world.add(make_shared<sphere>(point3(0, 10, 0), 10, make_shared<lambertian>(checker)));
     
     camera cam;
     
@@ -104,35 +120,41 @@ void checkered_spheres() {
     cam.background = color(0.70, 0.80, 1.00);
 
     cam.vfov = 30;
-    cam.lookfrom = point3(13, 2, 3);
+    cam.lookfrom = point3(0, 6, 12);
     cam.lookat = point3(0, 0, 0);
     cam.vup = vec3(0, 1, 0);
 
     cam.defocus_angle = 0;
 
-    //cam.render(world);
+    cam.render(world,lights);
 }
 void earth() {
-    auto earth_texture = make_shared<image_texture>("earthmap.jpg");
+    auto earth_texture = make_shared<image_texture>("download-(6).png");
     auto earth_surface = make_shared<lambertian>(earth_texture);
     auto globe = make_shared<sphere>(point3(0, 0, 0), 2, earth_surface);
-
+    hittable_list world;
+    world.add(globe);
+    hittable_list lights;
+    auto empty_material = shared_ptr<material>();
+    lights.add(
+        make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), empty_material));
+    lights.add(make_shared<sphere>(point3(190, 90, 190), 90, empty_material));
     camera cam;
 
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 400;
     cam.samples_per_pixel = 100;
     cam.max_depth = 50;
-    cam.background = color(0.70, 0.80, 1.00);
+    cam.background = color(0.3, 0.80, 0.3);
 
     cam.vfov = 20;
-    cam.lookfrom = point3(0, 0, 12);
+    cam.lookfrom = point3(0, 6, 12);
     cam.lookat = point3(0, 0, 0);
     cam.vup = vec3(0, 1, 0);
 
     cam.defocus_angle = 0;
 
-   // cam.render(hittable_list(globe));
+   cam.render(world,lights);
 }
 
 void perlin() {
@@ -251,6 +273,25 @@ void cornell_box() {
     // Glass Sphere
     auto glass = make_shared<dielectric>(1.5);
     world.add(make_shared<sphere>(point3(190, 90, 190), 90, glass));
+    // Egg
+    auto egg_mat = make_shared<lambertian>(color(0.95, 0.9, 0.8));
+
+    // Create ellipsoid (egg shape)
+    shared_ptr<hittable> egg = make_shared<ellipsoid>(
+        point3(0, 0, 0),   // temporary origin
+        60,    // x radius
+        90,    // y radius (taller -> egg)
+        60,    // z radius
+        egg_mat
+    );
+
+    // Slight rotation for realism
+    egg = make_shared<rotate_y>(egg, -25);
+
+    // Place it on the floor
+    egg = make_shared<translate>(egg, vec3(370, 90, 180));
+
+    world.add(egg);
 
     // Light Sources
     auto empty_material = shared_ptr<material>();
@@ -364,7 +405,7 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
     boundary = make_shared<sphere>(point3(0, 0, 0), 5000, make_shared<dielectric>(1.5));
     world.add(make_shared<constant_medium>(boundary, .0001, color(1, 1, 1)));
 
-    auto emat = make_shared<lambertian>(make_shared<image_texture>("earthmap.jpg"));
+    auto emat = make_shared<lambertian>(make_shared<image_texture>("download-(6).png"));
     world.add(make_shared<sphere>(point3(400, 200, 400), 100, emat));
     auto pertext = make_shared<noise_texture>(0.2);
     world.add(make_shared<sphere>(point3(220, 280, 300), 80, make_shared<lambertian>(pertext)));
@@ -382,7 +423,11 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
         vec3(-100, 270, 395)
     )
     );
-
+    hittable_list lights;
+    auto empty_material = shared_ptr<material>();
+    lights.add(
+        make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), empty_material));
+    lights.add(make_shared<sphere>(point3(190, 90, 190), 90, empty_material));
     camera cam;
 
     cam.aspect_ratio = 1.0;
@@ -398,7 +443,8 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
 
     cam.defocus_angle = 0;
 
-    //cam.render(world);
+
+    cam.render(world,lights);
 }
 void test_scene()
 {
@@ -454,7 +500,7 @@ int main() {
     case 6:simple_light();break;
     case 7: cornell_box();break;
     case 8: cornell_smoke();break;
-    case 9: final_scene(800, 10000, 40);break;
+    case 9: final_scene(400, 250, 4); break;
     case 10: test_scene();break;
     default: final_scene(400, 250, 4);break;
     }
